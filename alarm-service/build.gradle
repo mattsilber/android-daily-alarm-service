@@ -1,0 +1,40 @@
+plugins {
+    id "com.android.library"
+    id "org.jetbrains.kotlin.android"
+}
+
+android {
+    compileSdkVersion rootProject.ext.targetSdkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+
+    defaultConfig {
+        minSdkVersion 14
+        targetSdkVersion rootProject.ext.targetSdkVersion
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes.debug.testCoverageEnabled true
+
+    testOptions {
+        unitTests.includeAndroidResources = true
+        unitTests.all {
+            jvmArgs '-noverify'
+        }
+    }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
+
+    implementation "androidx.appcompat:appcompat:1.4.1"
+
+    testImplementation "androidx.test.ext:junit:$androidxTestExtJunitVersion"
+    testImplementation "androidx.test:runner:$androidxTestRunnerVersion"
+    testImplementation "androidx.test:core:$androidxTestCoreVersion"
+    testImplementation "androidx.test.espresso:espresso-core:$androidxTestEsspressoCoreVersion"
+    testImplementation "org.mockito:mockito-core:$mockitoCoreVersion"
+    testImplementation "org.robolectric:robolectric:$robolectricVersion"
+}
+
+apply from: "./publishing.gradle"
