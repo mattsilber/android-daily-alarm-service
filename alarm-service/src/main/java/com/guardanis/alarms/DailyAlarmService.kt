@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
@@ -12,7 +13,6 @@ import android.util.Log
 import androidx.core.app.JobIntentService
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.math.max
 
 abstract class DailyAlarmService: JobIntentService() {
 
@@ -26,8 +26,8 @@ abstract class DailyAlarmService: JobIntentService() {
             val cal = Calendar.getInstance()
 
             return (TimeUnit.HOURS.toSeconds(cal[Calendar.HOUR_OF_DAY].toLong())
-                    .plus(TimeUnit.MINUTES.toSeconds(cal[Calendar.MINUTE].toLong()))
-                    .plus(cal[Calendar.SECOND]).toInt())
+                .plus(TimeUnit.MINUTES.toSeconds(cal[Calendar.MINUTE].toLong()))
+                .plus(cal[Calendar.SECOND]).toInt())
         }
 
     protected abstract val notificationClickedReceiverClass: Class<*>
@@ -47,20 +47,26 @@ abstract class DailyAlarmService: JobIntentService() {
             return
         }
 
-        handleCurrentAlarmIfEligible()
-        scheduleNextAlarmIfAvailable()
+        val currentTimeOfDaySeconds = this.currentTimeOfDayInSeconds
+        val currentEpochTime = System.currentTimeMillis()
+
+        handleCurrentAlarmIfEligible(currentTimeOfDaySeconds, currentEpochTime)
+        scheduleNextAlarmIfAvailable(currentTimeOfDaySeconds, currentEpochTime)
     }
 
     protected abstract fun isServiceEnabled(): Boolean
 
-    private fun handleCurrentAlarmIfEligible() {
-        val currentAlarm = currentAlarmOrNull(alarms, currentTimeOfDayInSeconds)
-                ?: run {
-                    Log.d(tag, "$serviceName No active alarm.")
+    private fun handleCurrentAlarmIfEligible(
+        currentTimeOfDaySeconds: Int,
+        currentEpochTime: Long) {
 
-                    null
-                }
-                ?: return
+        val currentAlarm = currentAlarmOrNull(this, serviceJobId, alarms, currentTimeOfDaySeconds, currentEpochTime)
+
+        if (currentAlarm == null) {
+            Log.d(tag, "$serviceName No active alarm.")
+
+            return
+        }
 
         Log.d(tag, "$serviceName Alarm eligible. Showing...")
 
@@ -68,12 +74,13 @@ abstract class DailyAlarmService: JobIntentService() {
         showNotification()
         playNotificationSound(currentAlarm)
         doVibrate(currentAlarm)
+        notifyAlarmTriggered(this, serviceJobId, currentAlarm, currentEpochTime)
     }
 
     private fun showNotification() {
         try {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                    ?: return
+                ?: return
 
             notificationManager.cancel(serviceJobId)
 
@@ -108,7 +115,7 @@ abstract class DailyAlarmService: JobIntentService() {
             return
 
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-                ?: return
+            ?: return
 
         val channel = createNotificationChannel()
 
@@ -187,8 +194,11 @@ abstract class DailyAlarmService: JobIntentService() {
         alarmManager.setCompatRtcWakeup(System.currentTimeMillis() + playbackDurationMs, pendingIntent)
     }
 
-    private fun scheduleNextAlarmIfAvailable() {
-        val nextAlarmTimeFromNow = nextEligibleAlarmSecondsFromNowOrNull(alarms, currentTimeOfDayInSeconds) ?: return
+    private fun scheduleNextAlarmIfAvailable(
+        currentTimeOfDaySeconds: Int,
+        currentEpochTime: Long) {
+
+        val nextAlarmTimeFromNow = nextEligibleAlarmSecondsFromNowOrNull(this, serviceJobId, alarms, currentTimeOfDaySeconds, currentEpochTime) ?: return
 
         scheduleAlarmAfterSecondsFromNow(this, nextAlarmTimeFromNow, buildWakeUpIntent())
 
@@ -203,11 +213,13 @@ abstract class DailyAlarmService: JobIntentService() {
 
         private var mediaPlayer: MediaPlayer? = null
 
+        protected const val prefKeyLastNotify = "last_notify_%1\$s"
+
         fun <T: JobIntentService> restartOnApplicationCreate(
-                context: Context,
-                serviceClass: Class<T>,
-                serviceJobId: Int,
-                wakeupIntent: Intent) {
+            context: Context,
+            serviceClass: Class<T>,
+            serviceJobId: Int,
+            wakeupIntent: Intent) {
 
             val pendingIntentFlags: Int = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
                 PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
@@ -226,10 +238,10 @@ abstract class DailyAlarmService: JobIntentService() {
         }
 
         fun <T: JobIntentService> restart(
-                context: Context,
-                serviceClass: Class<T>,
-                serviceJobId: Int,
-                wakeupIntent: Intent) {
+            context: Context,
+            serviceClass: Class<T>,
+            serviceJobId: Int,
+            wakeupIntent: Intent) {
 
             stop(context, serviceJobId, wakeupIntent)
             start(context, serviceClass, serviceJobId)
@@ -237,10 +249,10 @@ abstract class DailyAlarmService: JobIntentService() {
 
         fun <T: JobIntentService> start(context: Context, serviceClass: Class<T>, serviceJobId: Int) {
             enqueueWork(
-                    context,
-                    serviceClass::class.java,
-                    serviceJobId,
-                    Intent(context, serviceClass::class.java)
+                context,
+                serviceClass::class.java,
+                serviceJobId,
+                Intent(context, serviceClass::class.java)
             )
         }
 
@@ -255,15 +267,15 @@ abstract class DailyAlarmService: JobIntentService() {
             val pendingIntent = PendingIntent.getBroadcast(context, 0, wakeupIntent, pendingIntentFlags)
 
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                    ?: return
+                ?: return
 
             alarmManager.setCompatRtcWakeup(System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(seconds), pendingIntent)
         }
 
         fun stop(
-                context: Context,
-                serviceJobId: Int,
-                wakeupIntent: Intent) {
+            context: Context,
+            serviceJobId: Int,
+            wakeupIntent: Intent) {
 
             cancelPendingAlarms(context, wakeupIntent)
             cancelNotification(context, serviceJobId)
@@ -273,14 +285,14 @@ abstract class DailyAlarmService: JobIntentService() {
 
         private fun cancelPendingAlarms(context: Context, wakeupIntent: Intent) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                    ?: return
+                ?: return
 
             alarmManager.cancelPendingBroadcastLaunch(context, wakeupIntent)
         }
 
         fun cancelNotification(context: Context, id: Int) {
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                    .cancel(id)
+                .cancel(id)
         }
 
         fun killMediaPlayback(context: Context) {
@@ -307,55 +319,97 @@ abstract class DailyAlarmService: JobIntentService() {
 
         private fun cancelPendingMediaExpiration(context: Context) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                    ?: return
+                ?: return
 
             alarmManager.cancelPendingBroadcastLaunch(context, mediaExpirationReceiverBuilder(context))
         }
 
         fun nextEligibleAlarmSecondsFromNowOrNull(
-                alarms: List<DailyAlarmRequest>,
-                currentTimeSeconds: Int): Long? {
+            context: Context,
+            serviceJobId: Int,
+            alarms: List<DailyAlarmRequest>,
+            currentTimeOfDaySeconds: Int,
+            currentEpochTime: Long): Long? {
 
-            val nextAlarm = nextEligibleAlarmOrNull(alarms, currentTimeSeconds)
-                    ?: return null
-
-            val currentTimeWithFrequency = currentTimeSeconds + nextAlarm.repeatFrequencySeconds
-
-            return when {
-                currentTimeWithFrequency in nextAlarm.startSecondsInDay..nextAlarm.endSecondsInDay ->
-                    nextAlarm.repeatFrequencySeconds.toLong()
-                nextAlarm.endSecondsInDay < currentTimeWithFrequency ->
-                    TimeUnit.HOURS.toSeconds(24) - currentTimeSeconds + nextAlarm.startSecondsInDay
-                else ->
-                    (max(currentTimeWithFrequency, nextAlarm.startSecondsInDay) - currentTimeSeconds).toLong()
-            }
+            return nextEligibleAlarmOrNull(context, serviceJobId, alarms, currentTimeOfDaySeconds, currentEpochTime)
+                ?.let({
+                    it.nextEligibleRequestSecondsFromTimeOfDay(
+                        currentTimeOfDaySeconds = currentTimeOfDaySeconds,
+                        secondsSinceLastNotification = secondsSinceLastNotification(context, serviceJobId, it, currentEpochTime)
+                    )
+                })
         }
 
         fun nextEligibleAlarmOrNull(
-                alarms: List<DailyAlarmRequest>,
-                currentTimeSeconds: Int): DailyAlarmRequest? {
+            context: Context,
+            serviceJobId: Int,
+            alarms: List<DailyAlarmRequest>,
+            currentTimeOfDaySeconds: Int,
+            currentEpochTime: Long): DailyAlarmRequest? {
 
-            val alarms = alarms
-                    .takeIf(List<*>::isNotEmpty)
-                    ?.filter(DailyAlarmRequest::active)
-                    ?.sortedBy(DailyAlarmRequest::startSecondsInDay) ?: return null
-
-            return alarms.firstOrNull({ currentTimeSeconds + it.repeatFrequencySeconds <= it.endSecondsInDay })
-                    ?: alarms.firstOrNull({ currentTimeSeconds + it.repeatFrequencySeconds >= it.startSecondsInDay })
+            return alarms
+                .filter(DailyAlarmRequest::active)
+                .minByOrNull({
+                    it.nextEligibleRequestSecondsFromTimeOfDay(
+                        currentTimeOfDaySeconds = currentTimeOfDaySeconds,
+                        secondsSinceLastNotification = secondsSinceLastNotification(context, serviceJobId, it, currentEpochTime)
+                    )
+                })
         }
 
         fun currentAlarmOrNull(
-                alarms: List<DailyAlarmRequest>,
-                currentTimeSeconds: Int): DailyAlarmRequest? {
+            context: Context,
+            serviceJobId: Int,
+            alarms: List<DailyAlarmRequest>,
+            currentTimeOfDaySeconds: Int,
+            epochTimeMs: Long): DailyAlarmRequest? {
 
-            val alarms = alarms
-                    .takeIf(List<*>::isNotEmpty)
-                    ?.filter(DailyAlarmRequest::active)
-                    ?.sortedBy(DailyAlarmRequest::startSecondsInDay) ?: return null
+            return alarms
+                .filter(DailyAlarmRequest::active)
+                .sortedBy(DailyAlarmRequest::startSecondsInDay)
+                .firstOrNull({
+                    val secondsSinceNotification = secondsSinceLastNotification(context, serviceJobId, it, epochTimeMs)
 
-            return alarms.firstOrNull({
-                it.active && currentTimeSeconds >= it.startSecondsInDay && currentTimeSeconds <= it.endSecondsInDay
-            })
+                    currentTimeOfDaySeconds >= it.startSecondsInDay
+                        && currentTimeOfDaySeconds <= it.endSecondsInDay
+                        && currentTimeOfDaySeconds - secondsSinceNotification <= it.repeatFrequencySeconds
+                })
+        }
+
+        internal open fun notifyAlarmTriggered(
+            context: Context,
+            serviceJobId: Int,
+            alarm: DailyAlarmRequest,
+            epochTimeMs: Long) {
+
+            getSharedAlarmPreferences(context, serviceJobId)
+                .edit()
+                .putLong(
+                    prefKeyLastNotify.format(alarm.id.toString()),
+                    epochTimeMs
+                )
+                .apply()
+        }
+
+
+        internal fun secondsSinceLastNotification(
+            context: Context,
+            serviceJobId: Int,
+            alarm: DailyAlarmRequest,
+            currentEpochTime: Long): Long {
+
+            return lastNotificationEpochTime(context, serviceJobId, alarm)
+                .takeIf({ 0 < it })
+                ?.let({ TimeUnit.MILLISECONDS.toSeconds(currentEpochTime - it) }) ?: 0
+        }
+
+        internal fun lastNotificationEpochTime(context: Context, serviceJobId: Int, alarm: DailyAlarmRequest): Long {
+            return getSharedAlarmPreferences(context, serviceJobId)
+                .getLong(prefKeyLastNotify.format(alarm.id.toString()), 0L)
+        }
+
+        internal fun getSharedAlarmPreferences(context: Context, serviceJobId: Int): SharedPreferences {
+            return context.getSharedPreferences("DailyAlarmService-$serviceJobId", Context.MODE_PRIVATE)
         }
     }
 }

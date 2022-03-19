@@ -46,14 +46,14 @@ class DailyAlarmRequest() {
     var repeatFrequencySeconds: Int = 60 * 60 * 23
 
     constructor(
-            id: Int,
-            startSecondsInDay: Int,
-            endSecondsInDay: Int,
-            active: Boolean,
-            vibrate: Boolean,
-            audioFile: String,
-            playbackDurationSeconds: Int,
-            repeatFrequencySeconds: Int): this() {
+        id: Int,
+        startSecondsInDay: Int,
+        endSecondsInDay: Int,
+        active: Boolean = false,
+        vibrate: Boolean = false,
+        audioFile: String = "",
+        playbackDurationSeconds: Int = 0,
+        repeatFrequencySeconds: Int): this() {
 
         this.id = id
         this.startSecondsInDay = startSecondsInDay
@@ -74,8 +74,24 @@ class DailyAlarmRequest() {
         val anotherRange = another.startSecondsInDay..another.endSecondsInDay
 
         return min(thisRange.last, anotherRange.last)
-                .minus(max(thisRange.first, anotherRange.first))
-                .let({ 0 <= it })
+            .minus(max(thisRange.first, anotherRange.first))
+            .let({ 0 <= it })
+    }
+
+    fun nextEligibleRequestSecondsFromTimeOfDay(
+        currentTimeOfDaySeconds: Int,
+        secondsSinceLastNotification: Long): Long {
+
+        val secondsInDayWhenNotificationCanBeDisplayed = (currentTimeOfDaySeconds - secondsSinceLastNotification) + repeatFrequencySeconds
+
+        return when {
+            secondsInDayWhenNotificationCanBeDisplayed in startSecondsInDay..endSecondsInDay ->
+                secondsInDayWhenNotificationCanBeDisplayed - currentTimeOfDaySeconds
+            endSecondsInDay < secondsInDayWhenNotificationCanBeDisplayed ->
+                TimeUnit.HOURS.toSeconds(24) - currentTimeOfDaySeconds + startSecondsInDay
+            else ->
+                (startSecondsInDay - currentTimeOfDaySeconds).toLong()
+        }
     }
 
     private fun secondsToTime(seconds: Long): String {
@@ -83,10 +99,10 @@ class DailyAlarmRequest() {
         val minutes = TimeUnit.SECONDS.toMinutes(seconds).toInt() % 60
 
         return (if (hours % 12 == 0) 12 else hours % 12)
-                .toString()
-                .plus(":")
-                .plus(if (minutes > 9) minutes else "0$minutes")
-                .plus(" ")
-                .plus(if (hours >= 12) "PM" else "AM")
+            .toString()
+            .plus(":")
+            .plus(if (minutes > 9) minutes else "0$minutes")
+            .plus(" ")
+            .plus(if (hours >= 12) "PM" else "AM")
     }
 }
