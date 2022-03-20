@@ -1,0 +1,43 @@
+name: Test and Deploy
+
+on:
+  push:
+
+jobs:
+  unit_test:
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Unit Test
+        run: ./gradlew daily-alarm-service:testDebugUnitTest --stacktrace
+
+  deploy:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: unit_tests
+    runs-on: [ubuntu-latest]
+    env:
+      DAS_RELEASE_MODE: true
+      DAS_RELEASE_SIGNING_KEY_ID: ${{ secrets.DAS_RELEASE_SIGNING_KEY_ID }}
+      DAS_RELEASE_SIGNING_KEY_PASSWORD: ${{ secrets.DAS_RELEASE_SIGNING_KEY_PASSWORD }}
+      DAS_RELEASE_SIGNING_KEY_RING_FILE: ${{ secrets.DAS_RELEASE_SIGNING_KEY_RING_FILE }}
+      DAS_MAVEN_REPO_USERNAME: ${{ secrets.DAS_MAVEN_REPO_USERNAME }}
+      DAS_MAVEN_REPO_PASSWORD: ${{ secrets.DAS_MAVEN_REPO_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare Secrets
+        run: |
+          echo ${{ secrets.DAS_RELEASE_SIGNING_KEY }} > tmp.asc
+          gpg -dearmor tmp.asc > $DAS_RELEASE_SIGNING_KEY_RING_FILE
+
+      - name: Publish AAR to Maven Central
+        run: ./gradlew daily-alarm-service:publishReleasePublicationToMavenCentral --stacktrace
+
+      - name: Clear Secrets
+        if: always()
+        run: |
+          rm tmp.asc
+          rm $DAS_RELEASE_SIGNING_KEY_RING_FILE
