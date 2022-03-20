@@ -23,7 +23,7 @@ class DailyAlarmServiceTests {
             startSecondsInDay = TimeUnit.HOURS.toSeconds(2).toInt(),
             endSecondsInDay = TimeUnit.HOURS.toSeconds(4).toInt(),
             active = true,
-            vibrate = false,
+            vibratePattern = longArrayOf(),
             audioFile = "",
             playbackDurationSeconds = 0,
             repeatFrequencySeconds = 1
@@ -33,7 +33,7 @@ class DailyAlarmServiceTests {
             startSecondsInDay = TimeUnit.HOURS.toSeconds(8).toInt(),
             TimeUnit.HOURS.toSeconds(10).toInt(),
             active = true,
-            vibrate = false,
+            vibratePattern = longArrayOf(),
             audioFile = "",
             playbackDurationSeconds = 0,
             repeatFrequencySeconds = 1
@@ -43,7 +43,7 @@ class DailyAlarmServiceTests {
             startSecondsInDay = TimeUnit.HOURS.toSeconds(14).toInt(),
             endSecondsInDay = TimeUnit.HOURS.toSeconds(16).toInt(),
             active = true,
-            vibrate = false,
+            vibratePattern = longArrayOf(),
             audioFile = "",
             playbackDurationSeconds = 0,
             repeatFrequencySeconds = 1
@@ -52,10 +52,7 @@ class DailyAlarmServiceTests {
 
     @Before
     fun clearPreferences() {
-        DailyAlarmService.getSharedAlarmPreferences(context, 0)
-            .edit()
-            .clear()
-            .apply()
+        DailyAlarmService.clearHistory(context, 0)
     }
 
     @Test
@@ -132,7 +129,7 @@ class DailyAlarmServiceTests {
                 startSecondsInDay = TimeUnit.HOURS.toSeconds(2).toInt(),
                 endSecondsInDay = TimeUnit.HOURS.toSeconds(4).toInt(),
                 active = true,
-                vibrate = false,
+                vibratePattern = longArrayOf(),
                 audioFile = "",
                 playbackDurationSeconds = 0,
                 repeatFrequencySeconds = TimeUnit.HOURS.toSeconds(1).toInt()

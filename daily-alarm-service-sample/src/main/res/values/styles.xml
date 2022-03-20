@@ -1,0 +1,40 @@
+<resources>
+
+    <style name="Base.Theme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/base__window_bg</item>
+        <item name="colorPrimary">@color/base__primary</item>
+        <item name="colorPrimaryDark">@color/base__primary_dark</item>
+        <item name="colorAccent">@color/base__accent</item>
+    </style>
+
+    <style name="Base.Theme.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <style name="Base.Theme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+
+    <style name="Base.Theme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <style name="Base.NextAlarmInfo" parent="Widget.AppCompat.TextView">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center</item>
+        <item name="android:padding">36dp</item>
+        <item name="android:textColor">@android:color/black</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <style name="Base.Action" parent="Widget.AppCompat.Button">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:background">@color/base__primary</item>
+        <item name="android:gravity">center</item>
+        <item name="android:padding">24dp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+</resources>

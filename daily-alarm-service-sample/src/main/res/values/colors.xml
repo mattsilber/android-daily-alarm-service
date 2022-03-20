@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <color name="base__window_bg">#ECF0F1</color>
+    <color name="base__primary">#34495E</color>
+    <color name="base__primary_dark">#2C3E50</color>
+    <color name="base__accent">#34495E</color>
+
+    <color name="ic_launcher_background">#34495E</color>
+
+</resources>

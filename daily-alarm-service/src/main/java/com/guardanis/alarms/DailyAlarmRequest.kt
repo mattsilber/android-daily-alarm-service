@@ -9,7 +9,11 @@ class DailyAlarmRequest() {
     var id: Int = 0
 
     var active: Boolean = false
-    var vibrate: Boolean = false
+
+    var vibratePattern: LongArray = longArrayOf()
+
+    val vibrate: Boolean
+        get() = vibratePattern.isNotEmpty()
 
     var playbackDurationSeconds: Int = 0
 
@@ -50,7 +54,7 @@ class DailyAlarmRequest() {
         startSecondsInDay: Int,
         endSecondsInDay: Int,
         active: Boolean = false,
-        vibrate: Boolean = false,
+        vibratePattern: LongArray = longArrayOf(),
         audioFile: String = "",
         playbackDurationSeconds: Int = 0,
         repeatFrequencySeconds: Int): this() {
@@ -59,7 +63,7 @@ class DailyAlarmRequest() {
         this.startSecondsInDay = startSecondsInDay
         this.endSecondsInDay = endSecondsInDay
         this.active = active
-        this.vibrate = vibrate
+        this.vibratePattern = vibratePattern
         this.audioFile = audioFile
         this.playbackDurationSeconds = playbackDurationSeconds
         this.repeatFrequencySeconds = repeatFrequencySeconds

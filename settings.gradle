@@ -14,3 +14,4 @@ pluginManagement {
 }
 
 include ':daily-alarm-service'
+include ':daily-alarm-service-sample'

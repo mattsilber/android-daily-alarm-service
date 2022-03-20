@@ -11,7 +11,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
 import androidx.core.app.JobIntentService
-import java.util.*
 import java.util.concurrent.TimeUnit
 
 abstract class DailyAlarmService: JobIntentService() {
@@ -20,15 +19,6 @@ abstract class DailyAlarmService: JobIntentService() {
     protected abstract val serviceJobId: Int
 
     protected abstract val alarms: List<DailyAlarmRequest>
-
-    protected val currentTimeOfDayInSeconds: Int
-        get() {
-            val cal = Calendar.getInstance()
-
-            return (TimeUnit.HOURS.toSeconds(cal[Calendar.HOUR_OF_DAY].toLong())
-                .plus(TimeUnit.MINUTES.toSeconds(cal[Calendar.MINUTE].toLong()))
-                .plus(cal[Calendar.SECOND]).toInt())
-        }
 
     protected abstract val notificationClickedReceiverClass: Class<*>
 
@@ -47,7 +37,7 @@ abstract class DailyAlarmService: JobIntentService() {
             return
         }
 
-        val currentTimeOfDaySeconds = this.currentTimeOfDayInSeconds
+        val currentTimeOfDaySeconds = currentTimeOfDayInSeconds
         val currentEpochTime = System.currentTimeMillis()
 
         handleCurrentAlarmIfEligible(currentTimeOfDaySeconds, currentEpochTime)
@@ -132,11 +122,15 @@ abstract class DailyAlarmService: JobIntentService() {
 
         try {
             val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator ?: return
-            vibrator.vibrateCompat(longArrayOf(0, 200, 200, 450, 0))
+            vibrator.vibrateCompat(vibratePattern(alarm))
         }
         catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    protected open fun vibratePattern(alarm: DailyAlarmRequest): LongArray {
+        return alarm.vibratePattern
     }
 
     @SuppressLint("MissingPermission")
@@ -250,9 +244,9 @@ abstract class DailyAlarmService: JobIntentService() {
         fun <T: JobIntentService> start(context: Context, serviceClass: Class<T>, serviceJobId: Int) {
             enqueueWork(
                 context,
-                serviceClass::class.java,
+                serviceClass,
                 serviceJobId,
-                Intent(context, serviceClass::class.java)
+                Intent(context, serviceClass)
             )
         }
 
@@ -281,6 +275,7 @@ abstract class DailyAlarmService: JobIntentService() {
             cancelNotification(context, serviceJobId)
             releaseMediaPlayer()
             cancelPendingMediaExpiration(context)
+            clearHistory(context, serviceJobId)
         }
 
         private fun cancelPendingAlarms(context: Context, wakeupIntent: Intent) {
@@ -391,8 +386,7 @@ abstract class DailyAlarmService: JobIntentService() {
                 .apply()
         }
 
-
-        internal fun secondsSinceLastNotification(
+        fun secondsSinceLastNotification(
             context: Context,
             serviceJobId: Int,
             alarm: DailyAlarmRequest,
@@ -406,6 +400,13 @@ abstract class DailyAlarmService: JobIntentService() {
         internal fun lastNotificationEpochTime(context: Context, serviceJobId: Int, alarm: DailyAlarmRequest): Long {
             return getSharedAlarmPreferences(context, serviceJobId)
                 .getLong(prefKeyLastNotify.format(alarm.id.toString()), 0L)
+        }
+
+        fun clearHistory(context: Context, serviceJobId: Int) {
+            getSharedAlarmPreferences(context, serviceJobId)
+                .edit()
+                .clear()
+                .apply()
         }
 
         internal fun getSharedAlarmPreferences(context: Context, serviceJobId: Int): SharedPreferences {

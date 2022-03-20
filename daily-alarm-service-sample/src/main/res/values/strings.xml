@@ -1,0 +1,16 @@
+<resources>
+
+    <string name="app_name">Daily Alarm Sample</string>
+
+    <string name="das_action_start">Enable Alarms</string>
+    <string name="das_action_disable">Disable Alarms</string>
+
+    <string name="das_info_next_alarm">Next Alarm: %1$s - %2$s\nSeconds from now: %3$s</string>
+
+    <string name="das_notification_title">Sample Notification Title</string>
+    <string name="das_notification_message">Sample Notification Message</string>
+
+    <string name="das_notification_channel_name">Sample Notifications</string>
+    <string name="das_notification_channel_description">These are very clearly sample notifications...</string>
+
+</resources>

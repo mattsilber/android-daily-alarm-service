@@ -1,1 +1,16 @@
-<manifest package="com.guardanis.sigcap"/>
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.guardanis.alarms">
+
+    <application>
+        <receiver
+            android:name=".KillMediaPlaybackReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action
+                    android:name="alarm.service.KILL_MEDIA_PLAYBACK" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
