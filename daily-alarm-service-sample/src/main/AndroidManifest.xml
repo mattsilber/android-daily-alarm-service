@@ -28,14 +28,5 @@
             android:enabled="true"
             android:exported="false" />
 
-        <receiver
-            android:name=".SampleWakeUpReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="alarm.service.WAKE_UP" />
-            </intent-filter>
-        </receiver>
-
     </application>
 </manifest>

@@ -11,7 +11,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.guardanis.alarms.DailyAlarmRequest
 import com.guardanis.alarms.DailyAlarmService
-import com.guardanis.alarms.WakeUpReceiver
+import com.guardanis.alarms.DailyAlarmWakeUpReceiver
 import java.util.concurrent.TimeUnit
 
 class SampleDailyAlarmService: DailyAlarmService() {
@@ -53,10 +53,6 @@ class SampleDailyAlarmService: DailyAlarmService() {
         return channel
     }
 
-    override fun buildWakeUpIntent(): Intent {
-        return buildWakeUpIntent(this)
-    }
-
     companion object {
 
         const val serviceJobId: Int = 1234
@@ -88,13 +84,6 @@ class SampleDailyAlarmService: DailyAlarmService() {
         fun isEnabled(context: Context): Boolean {
             return getSharedPreferences(context)
                 .getBoolean(prefEnabledKey, false)
-        }
-
-        fun buildWakeUpIntent(context: Context): Intent {
-            val wakeUpIntent = Intent(context, SampleWakeUpReceiver::class.java)
-            wakeUpIntent.action = WakeUpReceiver.RECEIVER_KEY
-
-            return wakeUpIntent
         }
     }
 }

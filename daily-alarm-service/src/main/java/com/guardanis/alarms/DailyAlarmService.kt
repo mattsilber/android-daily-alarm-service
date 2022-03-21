@@ -5,7 +5,6 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -59,16 +58,24 @@ abstract class DailyAlarmService: JobIntentService() {
             return
         }
 
+        handleCurrentAlarm(currentAlarm, currentTimeOfDaySeconds, currentEpochTime)
+    }
+
+    protected open fun handleCurrentAlarm(
+        alarm: DailyAlarmRequest,
+        currentTimeOfDaySeconds: Int,
+        currentEpochTime: Long) {
+
         Log.d(tag, "$serviceName Alarm eligible. Showing...")
 
         registerNotificationChannel()
-        showNotification()
-        playNotificationSound(currentAlarm)
-        doVibrate(currentAlarm)
-        notifyAlarmTriggered(this, serviceJobId, currentAlarm, currentEpochTime)
+        showNotification(alarm)
+        playNotificationSound(alarm, currentEpochTime)
+        vibrate(alarm)
+        notifyAlarmTriggered(this, serviceJobId, alarm, currentEpochTime)
     }
 
-    private fun showNotification() {
+    protected open fun showNotification(alarm: DailyAlarmRequest) {
         try {
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
                 ?: return
@@ -115,7 +122,7 @@ abstract class DailyAlarmService: JobIntentService() {
 
     protected abstract fun createNotificationChannel(): NotificationChannel
 
-    private fun doVibrate(alarm: DailyAlarmRequest) {
+    protected open fun vibrate(alarm: DailyAlarmRequest) {
         if (!alarm.vibrate)
             return
 
@@ -145,48 +152,20 @@ abstract class DailyAlarmService: JobIntentService() {
         }
     }
 
-    private fun playNotificationSound(alarm: DailyAlarmRequest) {
-        releaseMediaPlayer()
-
+    private fun playNotificationSound(alarm: DailyAlarmRequest, currentEpochTime: Long) {
         if (!alarm.audioPlaybackEnabled)
             return
 
         Log.d(tag, "$serviceName Playing audio for Alarm ${alarm.id}")
 
-        try {
-            mediaPlayer = MediaPlayer()
-            mediaPlayer?.setDataSource(alarm.audioFile)
-            mediaPlayer?.prepare()
-            mediaPlayer?.start()
-            mediaPlayer?.setOnCompletionListener({
-                try {
-                    mediaPlayer?.release()
-                }
-                catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            })
-        }
-        catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        cancelPendingMediaExpiration(this)
-        scheduleMediaExpiration(alarm)
-    }
-
-    private fun scheduleMediaExpiration(alarm: DailyAlarmRequest) {
-        val pendingIntentFlags: Int = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
-            PendingIntent.FLAG_IMMUTABLE
-        else
-            0
-
-        val pendingIntent = PendingIntent.getBroadcast(this, 0, mediaExpirationReceiverBuilder(this), pendingIntentFlags)
-
-        val playbackDurationMs = TimeUnit.SECONDS.toMillis(alarm.playbackDurationSeconds.toLong())
-
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        alarmManager.setCompatRtcWakeup(System.currentTimeMillis() + playbackDurationMs, pendingIntent)
+        DailyAlarmMediaPlaybackController.killMediaPlayback(this, serviceJobId)
+        DailyAlarmMediaPlaybackController.play(serviceJobId, alarm.audioFile)
+        DailyAlarmMediaPlaybackController.scheduleExpiration(
+            this,
+            serviceJobId = serviceJobId,
+            currentEpochTime = currentEpochTime,
+            durationSeconds = alarm.playbackDurationSeconds,
+        )
     }
 
     private fun scheduleNextAlarmIfAvailable(
@@ -200,13 +179,17 @@ abstract class DailyAlarmService: JobIntentService() {
         Log.d(tag, "$serviceName scheduling next alarm for $nextAlarmTimeFromNow seconds from now...")
     }
 
-    protected abstract fun buildWakeUpIntent(): Intent
+    protected open fun buildWakeUpIntent(): Intent {
+        return DailyAlarmWakeUpReceiver.buildWakeUpIntent(
+            this,
+            this::class.java,
+            serviceJobId
+        )
+    }
 
     companion object {
 
         const val tag: String = "AbstractAlarmService"
-
-        private var mediaPlayer: MediaPlayer? = null
 
         protected const val prefKeyLastNotify = "last_notify_%1\$s"
 
@@ -267,6 +250,18 @@ abstract class DailyAlarmService: JobIntentService() {
             alarmManager.setCompatRtcWakeup(System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(seconds), pendingIntent)
         }
 
+        fun <T: JobIntentService> stop(
+            context: Context,
+            serviceClass: Class<T>,
+            serviceJobId: Int) {
+
+            stop(
+                context,
+                serviceJobId,
+                DailyAlarmWakeUpReceiver.buildWakeUpIntent(context, serviceClass, serviceJobId)
+            )
+        }
+
         fun stop(
             context: Context,
             serviceJobId: Int,
@@ -274,8 +269,9 @@ abstract class DailyAlarmService: JobIntentService() {
 
             cancelPendingAlarms(context, wakeupIntent)
             cancelNotification(context, serviceJobId)
-            releaseMediaPlayer()
-            cancelPendingMediaExpiration(context)
+
+            DailyAlarmMediaPlaybackController.cancelPendingMediaExpiration(context, serviceJobId)
+
             clearHistory(context, serviceJobId)
         }
 
@@ -289,35 +285,6 @@ abstract class DailyAlarmService: JobIntentService() {
         fun cancelNotification(context: Context, id: Int) {
             (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
                 .cancel(id)
-        }
-
-        fun killMediaPlayback(context: Context) {
-            releaseMediaPlayer()
-            cancelPendingMediaExpiration(context)
-        }
-
-        private fun releaseMediaPlayer() {
-            try {
-                mediaPlayer?.stop()
-                mediaPlayer?.release()
-            }
-            catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-
-        private fun mediaExpirationReceiverBuilder(context: Context): Intent {
-            val expirationIntent = Intent(context, KillMediaPlaybackReceiver::class.java)
-            expirationIntent.action = KillMediaPlaybackReceiver.RECEIVER_KEY
-
-            return expirationIntent
-        }
-
-        private fun cancelPendingMediaExpiration(context: Context) {
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                ?: return
-
-            alarmManager.cancelPendingBroadcastLaunch(context, mediaExpirationReceiverBuilder(context))
         }
 
         fun nextEligibleAlarmSecondsFromNowOrNull(

@@ -4,12 +4,21 @@
 
     <application>
         <receiver
-            android:name=".KillMediaPlaybackReceiver"
+            android:name=".DailyAlarmKillMediaPlaybackReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
                 <action
                     android:name="alarm.service.KILL_MEDIA_PLAYBACK" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".DailyAlarmWakeUpReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="alarm.service.WAKE_UP" />
             </intent-filter>
         </receiver>
     </application>

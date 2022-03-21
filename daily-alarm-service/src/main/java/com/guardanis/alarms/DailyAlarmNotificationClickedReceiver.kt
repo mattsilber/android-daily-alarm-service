@@ -15,7 +15,8 @@ abstract class DailyAlarmNotificationClickedReceiver: BroadcastReceiver() {
     }
 
     open fun handleAlarmNotificationClicked(context: Context) {
-        DailyAlarmService.killMediaPlayback(context)
+        DailyAlarmMediaPlaybackController.killMediaPlayback(context, serviceJobId)
+
         DailyAlarmService.cancelNotification(context, serviceJobId)
     }
 

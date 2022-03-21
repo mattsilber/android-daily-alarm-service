@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.guardanis.alarms.DailyAlarmService
+import com.guardanis.alarms.DailyAlarmWakeUpReceiver
 import com.guardanis.alarms.currentTimeOfDayInSeconds
 
 class MainActivity: AppCompatActivity(), View.OnClickListener {
@@ -44,8 +45,8 @@ class MainActivity: AppCompatActivity(), View.OnClickListener {
         else {
             DailyAlarmService.stop(
                 this,
-                SampleDailyAlarmService.serviceJobId,
-                SampleDailyAlarmService.buildWakeUpIntent(this)
+                SampleDailyAlarmService::class.java,
+                SampleDailyAlarmService.serviceJobId
             )
         }
 
