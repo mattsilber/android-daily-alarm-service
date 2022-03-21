@@ -50,7 +50,8 @@ abstract class DailyAlarmService: JobIntentService() {
         currentTimeOfDaySeconds: Int,
         currentEpochTime: Long) {
 
-        val currentAlarm = currentAlarmOrNull(this, serviceJobId, alarms, currentTimeOfDaySeconds, currentEpochTime)
+        // The "next" alarm will always be the current alarm, until it has been displayed
+        val currentAlarm = nextEligibleAlarmOrNull(this, serviceJobId, alarms, currentTimeOfDaySeconds, currentEpochTime)
 
         if (currentAlarm == null) {
             Log.d(tag, "$serviceName No active alarm.")
@@ -349,25 +350,6 @@ abstract class DailyAlarmService: JobIntentService() {
                         currentTimeOfDaySeconds = currentTimeOfDaySeconds,
                         secondsSinceLastNotification = secondsSinceLastNotification(context, serviceJobId, it, currentEpochTime)
                     )
-                })
-        }
-
-        fun currentAlarmOrNull(
-            context: Context,
-            serviceJobId: Int,
-            alarms: List<DailyAlarmRequest>,
-            currentTimeOfDaySeconds: Int,
-            epochTimeMs: Long): DailyAlarmRequest? {
-
-            return alarms
-                .filter(DailyAlarmRequest::active)
-                .sortedBy(DailyAlarmRequest::startSecondsInDay)
-                .firstOrNull({
-                    val secondsSinceNotification = secondsSinceLastNotification(context, serviceJobId, it, epochTimeMs)
-
-                    currentTimeOfDaySeconds >= it.startSecondsInDay
-                        && currentTimeOfDaySeconds <= it.endSecondsInDay
-                        && currentTimeOfDaySeconds - secondsSinceNotification <= it.repeatFrequencySeconds
                 })
         }
 
