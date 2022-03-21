@@ -31,6 +31,7 @@ class SampleDailyAlarmService: DailyAlarmService() {
 
     override fun buildNotification(contentIntent: PendingIntent): Notification {
         return NotificationCompat.Builder(this, notificationChannelName)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.das_notification_title))
             .setContentText(getString(R.string.das_notification_message))
             .setContentIntent(contentIntent)
