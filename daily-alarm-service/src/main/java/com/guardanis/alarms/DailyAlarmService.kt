@@ -102,6 +102,7 @@ abstract class DailyAlarmService: JobIntentService() {
     protected open fun buildNotificationClickedIntent(): Intent {
         val clickedIntent = Intent(this, notificationClickedReceiverClass::class.java)
         clickedIntent.action = DailyAlarmNotificationClickedReceiver.NOTIFICATION_CLICKED_RECEIVER_KEY
+        clickedIntent.putExtra(DailyAlarmNotificationClickedReceiver.EXTRA_SERVICE_JOB_ID, serviceJobId)
 
         return clickedIntent
     }

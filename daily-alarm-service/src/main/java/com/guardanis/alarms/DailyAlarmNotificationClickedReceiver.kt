@@ -10,6 +10,12 @@ abstract class DailyAlarmNotificationClickedReceiver: BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == NOTIFICATION_CLICKED_RECEIVER_KEY) {
+            val serviceJobId = intent.getIntExtra(EXTRA_SERVICE_JOB_ID, -1)
+
+            if (serviceJobId != this.serviceJobId) {
+                return
+            }
+
             handleAlarmNotificationClicked(context)
         }
     }
@@ -23,5 +29,7 @@ abstract class DailyAlarmNotificationClickedReceiver: BroadcastReceiver() {
     companion object {
 
         const val NOTIFICATION_CLICKED_RECEIVER_KEY = "alarm.service.NOTIFICATION_CLICKED"
+
+        const val EXTRA_SERVICE_JOB_ID = "alarm.service.NOTIFICATION_CLICKED_SERVICE_JOB_ID"
     }
 }
