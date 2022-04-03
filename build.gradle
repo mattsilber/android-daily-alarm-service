@@ -33,10 +33,10 @@ allprojects {
         mavDeveloperOrg = "Guardanis"
         mavDeveloperOrgUrl = "https://guardanis.com"
 
-        mavSiteUrl = "https://github.com/mattsilber/android-alarm-service"
-        mavGitUrl = "https://github.com/mattsilber/android-alarm-service.git"
-        mavScmConnection = "scm:git:git://github.com:mattsilber/android-alarm-service.git"
-        mavScmDeveloperConnection = "scm:git:ssh://github.com:mattsilber/android-alarm-service.git"
+        mavSiteUrl = "https://github.com/mattsilber/android-daily-alarm-service"
+        mavGitUrl = "https://github.com/mattsilber/android-daily-alarm-service.git"
+        mavScmConnection = "scm:git:git://github.com:mattsilber/android-daily-alarm-service.git"
+        mavScmDeveloperConnection = "scm:git:ssh://github.com:mattsilber/android-daily-alarm-service.git"
 
         mavDeploymentRepo = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
     }
