@@ -233,8 +233,8 @@ abstract class DailyAlarmService: JobIntentService() {
                 Intent(context, serviceClass)
             )
         }
-
-        protected fun scheduleAlarmAfterSecondsFromNow(context: Context, seconds: Long, wakeupIntent: Intent) {
+        
+        fun scheduleAlarmAfterSecondsFromNow(context: Context, seconds: Long, wakeupIntent: Intent) {
             val pendingIntentFlags: Int = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
                 PendingIntent.FLAG_IMMUTABLE
             else
