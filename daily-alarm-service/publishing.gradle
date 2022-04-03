@@ -38,7 +38,7 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 afterEvaluate {
     publishing {
         publications {
-            sigcapRelease(MavenPublication) {
+            release(MavenPublication) {
                 from components.release
 
                 artifact sourcesJar
