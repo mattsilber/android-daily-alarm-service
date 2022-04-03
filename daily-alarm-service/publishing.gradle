@@ -2,6 +2,7 @@ if (System.getenv("DAS_RELEASE_MODE") != "true") {
     return
 }
 
+apply plugin: 'org.jetbrains.dokka'
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
@@ -19,20 +20,22 @@ task sourcesJar(type: Jar) {
     from android.sourceSets.main.java.srcDirs
 }
 
-task javadoc(type: Javadoc) {
-    source = android.sourceSets.main.java.srcDirs
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+dokkaJavadoc.configure {
+    outputDirectory.set(file("$buildDir/javadoc"))
 
-    android.libraryVariants.all { variant ->
-        if (variant.name == 'release') {
-            owner.classpath += variant.javaCompileProvider.get().classpath
+    dokkaSourceSets {
+        configureEach {
+            includeNonPublic.set(false)
+            skipDeprecated.set(false)
+            reportUndocumented.set(true)
+            skipEmptyPackages.set(true)
         }
     }
 }
 
-task javadocJar(type: Jar, dependsOn: javadoc) {
+task javadocJar(type: Jar, dependsOn: dokkaJavadoc) {
     archiveClassifier.set('javadoc')
-    from javadoc.destinationDir
+    from dokkaJavadoc.outputDirectory
 }
 
 afterEvaluate {
