@@ -159,7 +159,7 @@ abstract class DailyAlarmService: JobIntentService() {
         Log.d(tag, "$serviceName Playing audio for Alarm ${alarm.id}")
 
         DailyAlarmMediaPlaybackController.killMediaPlayback(this, serviceJobId)
-        DailyAlarmMediaPlaybackController.play(serviceJobId, alarm.audioFile)
+        DailyAlarmMediaPlaybackController.play(serviceJobId, mediaPlaybackDataSource(alarm))
         DailyAlarmMediaPlaybackController.scheduleExpiration(
             this,
             serviceJobId = serviceJobId,
@@ -168,15 +168,23 @@ abstract class DailyAlarmService: JobIntentService() {
         )
     }
 
+    protected open fun mediaPlaybackDataSource(alarm: DailyAlarmRequest): String {
+        return alarm.audioFile
+    }
+
     private fun scheduleNextAlarmIfAvailable(
         currentTimeOfDaySeconds: Int,
         currentEpochTime: Long) {
 
-        val nextAlarmTimeFromNow = nextEligibleAlarmSecondsFromNowOrNull(this, serviceJobId, alarms, currentTimeOfDaySeconds, currentEpochTime) ?: return
-
-        scheduleAlarmAfterSecondsFromNow(this, nextAlarmTimeFromNow, buildWakeUpIntent())
-
-        Log.d(tag, "$serviceName scheduling next alarm for $nextAlarmTimeFromNow seconds from now...")
+        scheduleNextAlarmIfAvailable(
+            this,
+            this::class.java,
+            serviceJobId,
+            alarms,
+            currentTimeOfDaySeconds,
+            currentEpochTime,
+            buildWakeUpIntent()
+        )
     }
 
     protected open fun buildWakeUpIntent(): Intent {
@@ -233,6 +241,61 @@ abstract class DailyAlarmService: JobIntentService() {
                 Intent(context, serviceClass)
             )
         }
+
+        fun <T: JobIntentService> scheduleNextAlarmIfAvailable(
+            context: Context,
+            serviceClass: Class<T>,
+            serviceJobId: Int,
+            alarms: List<DailyAlarmRequest>,
+            currentTimeOfDaySeconds: Int,
+            currentEpochTime: Long) {
+
+            scheduleNextAlarmIfAvailable(
+                context,
+                serviceClass,
+                serviceJobId,
+                alarms,
+                currentTimeOfDaySeconds,
+                currentEpochTime,
+                DailyAlarmWakeUpReceiver.buildWakeUpIntent(
+                    context,
+                    serviceClass,
+                    serviceJobId
+                )
+            )
+        }
+
+        fun <T: JobIntentService> scheduleNextAlarmIfAvailable(
+            context: Context,
+            serviceClass: Class<T>,
+            serviceJobId: Int,
+            alarms: List<DailyAlarmRequest>,
+            currentTimeOfDaySeconds: Int,
+            currentEpochTime: Long,
+            wakeupIntent: Intent) {
+
+            val nextAlarmTimeFromNow = nextEligibleAlarmSecondsFromNowOrNull(
+                context,
+                serviceJobId,
+                alarms,
+                currentTimeOfDaySeconds,
+                currentEpochTime
+            )
+
+            if (nextAlarmTimeFromNow == null) {
+                Log.d(tag, "No alarm eligible for $serviceJobId. Aborting scheduling.")
+
+                return
+            }
+
+            Log.d(tag, "Scheduling next alarm for $serviceJobId exactly $nextAlarmTimeFromNow seconds from now...")
+
+            scheduleAlarmAfterSecondsFromNow(
+                context,
+                nextAlarmTimeFromNow,
+                wakeupIntent
+            )
+        }
         
         fun scheduleAlarmAfterSecondsFromNow(context: Context, seconds: Long, wakeupIntent: Intent) {
             val pendingIntentFlags: Int = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -244,10 +307,12 @@ abstract class DailyAlarmService: JobIntentService() {
 
             val pendingIntent = PendingIntent.getBroadcast(context, 0, wakeupIntent, pendingIntentFlags)
 
-            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-                ?: return
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
 
-            alarmManager.setCompatRtcWakeup(System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(seconds), pendingIntent)
+            alarmManager.setCompatRtcWakeup(
+                System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(seconds),
+                pendingIntent
+            )
         }
 
         fun <T: JobIntentService> stop(

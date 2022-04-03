@@ -1,12 +1,16 @@
 package com.guardanis.alarms.sample
 
+import android.app.AlarmManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.guardanis.alarms.DailyAlarmService
-import com.guardanis.alarms.DailyAlarmWakeUpReceiver
 import com.guardanis.alarms.currentTimeOfDayInSeconds
 
 class MainActivity: AppCompatActivity(), View.OnClickListener {
@@ -36,11 +40,30 @@ class MainActivity: AppCompatActivity(), View.OnClickListener {
         SampleDailyAlarmService.setEnabled(this, !SampleDailyAlarmService.isEnabled(this))
 
         if (SampleDailyAlarmService.isEnabled(this)) {
+            if (!canScheduleExactAlarms()) {
+                SampleDailyAlarmService.setEnabled(this, false)
+
+                showCannotScheduleAlarmsError()
+
+                return
+            }
+
             DailyAlarmService.start(
                 this,
                 SampleDailyAlarmService::class.java,
                 SampleDailyAlarmService.serviceJobId
             )
+
+            // Or, to schedule the next eligible from now,
+            // replace the [DailyAlarmService.start] with this:
+//            DailyAlarmService.scheduleNextAlarmIfAvailable(
+//                this,
+//                SampleDailyAlarmService::class.java,
+//                SampleDailyAlarmService.serviceJobId,
+//                SampleDailyAlarmService.mockedAlarms,
+//                currentTimeOfDayInSeconds,
+//                System.currentTimeMillis()
+//            )
         }
         else {
             DailyAlarmService.stop(
@@ -86,5 +109,28 @@ class MainActivity: AppCompatActivity(), View.OnClickListener {
                 else -> R.string.das_action_start
             }
         )
+    }
+
+    private fun canScheduleExactAlarms(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return true
+        }
+
+        val alarmService = getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return false
+
+        return alarmService.canScheduleExactAlarms()
+    }
+
+    private fun showCannotScheduleAlarmsError() {
+        AlertDialog.Builder(this)
+            .setMessage("You need SCHEDULE_EXACT_ALARM permissions to use the service")
+            .setPositiveButton("Edit permissions", { _, _ ->
+                val intent = Intent()
+                intent.action = android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM
+
+                startActivity(intent)
+            })
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }
