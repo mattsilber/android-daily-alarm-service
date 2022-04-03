@@ -30,9 +30,3 @@ jobs:
 
       - name: Publish AAR to Maven Central
         run: ./gradlew daily-alarm-service:publishReleasePublicationToMavenCentral --stacktrace
-
-      - name: Clear Secrets
-        if: always()
-        run: |
-          rm tmp.asc
-          rm key.gpg
