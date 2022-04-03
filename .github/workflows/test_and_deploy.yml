@@ -19,6 +19,7 @@ jobs:
     runs-on: [ubuntu-latest]
     env:
       DAS_RELEASE_MODE: true
+      DAS_RELEASE_SIGNING_KEY: ${{ secrets.DAS_RELEASE_SIGNING_KEY }}
       DAS_RELEASE_SIGNING_KEY_ID: ${{ secrets.DAS_RELEASE_SIGNING_KEY_ID }}
       DAS_RELEASE_SIGNING_KEY_PASSWORD: ${{ secrets.DAS_RELEASE_SIGNING_KEY_PASSWORD }}
       DAS_MAVEN_REPO_USERNAME: ${{ secrets.DAS_MAVEN_REPO_USERNAME }}
@@ -26,12 +27,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
-      - name: Prepare Secrets
-        run: |
-          echo "${{ secrets.DAS_RELEASE_SIGNING_KEY }}" > tmp.asc
-          gpg -dearmor tmp.asc > key.gpg
-          echo "DAS_RELEASE_SIGNING_KEY_RING_FILE=${GITHUB_WORKSPACE}/key.gpg" >> $GITHUB_ENV
 
       - name: Publish AAR to Maven Central
         run: ./gradlew daily-alarm-service:publishReleasePublicationToMavenCentral --stacktrace
